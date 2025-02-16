@@ -1,6 +1,7 @@
 const express = require("express");   
 const http = require("http"); 
 const WebSocket = require("ws");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
 const server = http.createServer(app);  // Create an HTTP server
@@ -8,22 +9,39 @@ const server = http.createServer(app);  // Create an HTTP server
 // Create a WebSocket server attached to the HTTP server
 const wss = new WebSocket.Server({ server });
 
+let players = {};
+
 wss.on("connection", (ws) => {
-    console.log("A user connected");
+    const playerID = uuidv4();
+    console.log("A user connected: ${playerID}");
+
+    ws.send(JSON.stringify({ type: "init" , players}));
+
+    players[playerID] = { x:0, y: 1.6, z:0 };
 
     ws.on("message", (message) => {
-        console.log(`Received: ${message}`);
+        const data = JSON.parse(message);
 
-        // Broadcast the message to all clients
-        wss.clients.forEach(client => {
-            if (client !== ws && client.readyState === WebSocket.OPEN) {
-                client.send(message);
-            }
-        });
+        if (data.type === "update") {
+            players[playerID] = data.position;
+
+            wss.clients.forEach(client => {
+                if (client !== ws && client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: "update", id: playerID, position: data.position }));
+                }
+            });
+        }
     });
 
     ws.on("close", () => {
-        console.log("A user disconnected");
+        console.log("A user disconnected: ${playerID}");
+        delete players[playerID];
+
+        wss.clients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ type: "remove", id: playerID }));
+            }
+        });
     });
 });
 

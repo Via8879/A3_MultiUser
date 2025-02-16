@@ -11,13 +11,14 @@
     <body>
         <a-scene physics="debug: false; gravity: -9.8">
             <a-entity environment="preset: forest; ground: flat; groundColor: #228B22;"></a-entity>
+
             <a-entity id="player" position="0 1.6 0">
                 <a-camera></a-camera>
             </a-entity>
-            <a-entity id="remotePlayer" position="0 1.6 -2" geometry="primitive: box" material="color: blue"></a-entity>
 
             <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#808080" material="shader: grid;"></a-plane>
         </a-scene>
+        <script src="js/Connection.js"></script>
         <script src="Mouvment/Mouvments.js"></script>
     </body>
 </html>
