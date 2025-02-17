@@ -5,8 +5,6 @@ const { v4: uuidv4 } = require("uuid");
 
 const app = express();
 const server = http.createServer(app);  // Create an HTTP server
-
-// Create a WebSocket server attached to the HTTP server
 const wss = new WebSocket.Server({ server });
 
 let players = {};
@@ -15,9 +13,16 @@ wss.on("connection", (ws) => {
     const playerID = uuidv4();
     console.log("A user connected: ${playerID}");
 
+    players[playerID] = { x: 0, y: 1.6, z: 0 };
+
     ws.send(JSON.stringify({ type: "init" , players}));
 
-    players[playerID] = { x:0, y: 1.6, z:0 };
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(JSON.stringify({ type: "newPlayer", id: playerID, position: players[playerID] }));
+
+        }
+    });
 
     ws.on("message", (message) => {
         const data = JSON.parse(message);

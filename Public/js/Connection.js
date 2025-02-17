@@ -13,19 +13,20 @@ socket.onmessage = (event) => {
     let data = JSON.parse(event.data);
 
     if (data.type === "init") {
-        Object.keys(data.players).forEach(id = > createRemotePlayer(id, data.players[id]));
+        Object.keys(data.players).forEach(id => createRemotePlayer(id, data.players[id]));
+
+    }
+
+    if (data.type === "newPlayer") {
+        createRemotePlayer(data.id, data.position);
 
     }
 
     if (data.type === "update") {
-        if (!players[data.id]) {
-            createRemotePlayer(data.id, data.position);
-
-        }
         updateRemotePlayer(data.id, data.position);
     }
 
-    if (data.type == "remouve") {
+    if (data.type == "remove") {
         removeRemotePlayer(data.id);
     }
 };
