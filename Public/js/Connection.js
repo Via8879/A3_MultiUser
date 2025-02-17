@@ -1,11 +1,23 @@
-const socket = new WebSocket("ws://localhost:8080");
+const socket = new WebSocket("ws://10.77.160.244:8080");
 
 let player = document.getElementById("player");
 let players = {};
+let playerID = localStorage.getItem("playerID") || null;
+
+socket.onopen = () => {
+    if (!playerID) {
+        socket.send(JSON.stringify({ type: "newPlayer" }));
+    }
+    else {
+        socket.send(JSON.stringify({ type: "reconnect", id: playerID }));
+    }
+};
 
 setInterval(() => {
-    let position = player.object3D.position;
-    socket.send(JSON.stringify({ type: "update", position: { x: position.x, y: position.y, z: position.z } }));
+    let position = player.getAttribute("position");
+    if (playerID) {
+        socket.send(JSON.stringify({ type: "update", position: { x: position.x, y: position.y, z: position.z } }));
+    }
 
 }, 100);
 
@@ -36,7 +48,7 @@ function createRemotePlayer(id, position) {
     let newPlayer = document.createElement("a-entity");
     newPlayer.setAttribute("geometry", "primitive: box");
     newPlayer.setAttribute("material", "color: blue");
-    newPlayer.setAttribute("position", '${position.x} ${position.y} ${position.z}');
+    newPlayer.setAttribute("position", `${position.x} ${position.y} ${position.z}`);
     newPlayer.setAttribute("id", id);
     scene.appendChild(newPlayer);
     players[id] = newPlayer;
@@ -44,7 +56,7 @@ function createRemotePlayer(id, position) {
 
 function updateRemotePlayer(id, position) {
     if (players[id]) {
-        players[id].setAttribute("position", '${poisition.x ${position.y ${position.z}');
+        players[id].object3D.position.set(position.x, position.y, position.z);
 
     }
 }

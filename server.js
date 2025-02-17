@@ -8,26 +8,43 @@ const server = http.createServer(app);  // Create an HTTP server
 const wss = new WebSocket.Server({ server });
 
 let players = {};
+let connections = {};
 
 wss.on("connection", (ws) => {
-    const playerID = uuidv4();
-    console.log("A user connected: ${playerID}");
-
-    players[playerID] = { x: 0, y: 1.6, z: 0 };
-
-    ws.send(JSON.stringify({ type: "init" , players}));
-
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: "newPlayer", id: playerID, position: players[playerID] }));
-
-        }
-    });
+    let playerID = null;
 
     ws.on("message", (message) => {
         const data = JSON.parse(message);
 
-        if (data.type === "update") {
+        if (data.type === "newPlayer") {
+            playerID = uuidv4();
+            players[playerID] = { x: 0, y: 1.6, z: 0 };
+            connections[playerID] = ws;
+
+            ws.send(JSON.stringify({ type: "setID", id: playerID }));
+
+            wss.clients.forEach(client => {
+                if (client.readyState === WebSocket.OPEN) {
+                    client.send(JSON.stringify({ type: "newPlayer", id: playerID, position: players[playerID] }));
+                }
+            });
+        }
+
+        if (data.type === "reconnect") {
+            playerID = data.id;
+
+            if (players[playerID]) {
+                ws.send(JSON.stringify({ type: "init", players }));
+            }
+            else {
+                playerID = uuidv4();
+                players[playerID] = { x: 0, y: 1.6, z: 0 };
+                connections[playerID] = ws;
+                ws.send(JSON.stringify({ type: "setID", id: playerID }));
+            }
+        }
+
+        if (data.type === "update" && playerID) {
             players[playerID] = data.position;
 
             wss.clients.forEach(client => {
@@ -39,14 +56,9 @@ wss.on("connection", (ws) => {
     });
 
     ws.on("close", () => {
-        console.log("A user disconnected: ${playerID}");
-        delete players[playerID];
-
-        wss.clients.forEach(client => {
-            if (client.readyState === WebSocket.OPEN) {
-                client.send(JSON.stringify({ type: "remove", id: playerID }));
-            }
-        });
+        if (playerID && players[playerID]) {
+            delete connections[playerID];
+        }
     });
 });
 
@@ -55,5 +67,5 @@ app.use(express.static("public"));
 
 // Start the server on port 8080
 server.listen(8080, () => {
-    console.log("✅ Server is running on http://localhost:8080");
+    console.log("✅ Server is running on http://10.77.160.244:8080");
 });
