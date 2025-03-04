@@ -15,17 +15,20 @@ server.listen(8080, ()=>console.log("listeing on http port 8080"))
 const wsServer = new WebSocketServer({ httpServer: server});
 
 const players = {};
-const objects = [];
+let objects = [];
 
 let sphere =  { position: randomPosition() };
 const score = {};
+const roles = ["spawner", "breaker"];
 
 wsServer.on("request", request => {
     const connection = request.accept(null, request.origin);
     console.log("New WebSocket connection established");
     const playerID = guid();
 
-    players[playerID] = { connection };
+    let role = Object.keys(players).length % 2 === 0 ? "spawner" : "breaker";
+
+    players[playerID] = { connection, role };
 
     score[playerID] = 0;
 
@@ -36,13 +39,15 @@ wsServer.on("request", request => {
             type: "init", 
             objects,
             sphere,
-            score
+            score,
+            role
         })
     );
 
     ShowNew({
         type: "newPlayer",
-        id: playerID
+        id: playerID,
+        role
     }, playerID);
 
     connection.on("message", message => {
@@ -50,10 +55,14 @@ wsServer.on("request", request => {
 
         // object stacking 
         if (result.type === "stackObject") {
-            objects.push(result.object);
+            let newObject = {
+                id: guid(),
+                position: result.object.position
+            };
+            objects.push(newObject);
             ShowNew({ 
                 type: "stackObject",
-                object: result.object
+                object: newObject
             });
         }
 
@@ -67,6 +76,15 @@ wsServer.on("request", request => {
                 type: "GotSphere",
                 sphere,
                 score
+            });
+            console.log(`player ${result.id} found teh sphere`);
+        }
+
+        if (result.type === "breakObject") {
+            objects = objects.filter(obj => obj.id !== result.objectID);
+            ShowNew({
+                type: "removeObject",
+                objectID: result.objectID
             });
         }
 

@@ -5,6 +5,7 @@ let objects = [];
 let sphere;
 let score = {};
 let scoreBoard;
+let playerRole;
 
 socket.onopen = () => {
     console.log("Connected to Websocket server");
@@ -14,10 +15,19 @@ socket.onmessage = (event) => {
     let data = JSON.parse(event.data);
 
     if (data.type === "init") {
+        playerRole = data.role;
+        console.log(`your role is: ${playerRole}`);
+
+        showPlayerRole(playerRole);
+
         data.objects.forEach((obj) => addStackObjects(obj));
         placeSphere(data.sphere.position);
         updateScoreBoard(data.score);
 
+    }
+
+    if (data.type === "newPlayer") {
+        console.log(`New player joined with role: ${data.role}`);
     }
 
     if (data.type === "stackObject") {
@@ -29,11 +39,19 @@ socket.onmessage = (event) => {
         placeSphere(data.sphere.position);
         updateScoreBoard(data.score);
     }
+
+    if (data.type === "removeObject") {
+        let removedBlock = document.querySelector(`[id='${data.objectID}']`);
+        if (removedBlock) {
+            removedBlock.parentNode.removeChild(removedBlock);
+        }
+    }
 };
 
 
 function addStackObjects(object) {
     let newBlock = document.createElement("a-box");
+    newBlock.setAttribute("id", object.id);
     newBlock.setAttribute("position", `${object.position.x} ${object.position.y} ${object.position.z}`);
     newBlock.setAttribute("color", "white");
     newBlock.setAttribute("width", "1");
@@ -63,10 +81,19 @@ function placeSphere(position){
             console.log("sphere clicked");
             socket.send(JSON.stringify({ 
                 type: "GetSphere", 
-                id: playerID
+                id: socket.playerID
             }));
         });
     }
+}
+
+function showPlayerRole(role) {
+    let roleText = document.createElement("a-entity");
+    roleText.setAttribute("position", "0 2.5 -1");
+    roleText.setAttribute("text", `value: Role: ${role.toUpperCase()}; color: white; width: 3; align: center`);
+    roleText.setAttribute("id", "playerRoleDisplay");
+    scene.appendChild(roleText);
+
 }
 
 function updateScoreBoard(scoreData) {
@@ -89,23 +116,32 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (stackCube) {
         stackCube.addEventListener("click", () => {
-            console.log("blue cube clicked");
+            
+            if (playerRole === "spawner") {
+                let newObject = {
+                    position: randomPosition()
+                };
+                socket.send(JSON.stringify({
+                    type: "stackObject", 
+                    object: newObject
+                }));
+            }else{
+                console.log("you are not a spawner");
+            }
 
-            let newObject = {
-                position: randomPosition()
-            };
-
-            console.log("Blue cube clicked!");
-            socket.send(JSON.stringify({
-                type: "stackObject", 
-                object: newObject
-            }));
         });
 
     } 
-    else {
-        console.error("error could not find stack-object");
-    }
+   
+    scene.addEventListener("click", (event) => {
+        let target = event.target;
+        if (playerRole === "breaker" && target.classList.contains("stackable")) {
+            socket.send(JSON.stringify({
+                type: "breakObject",
+                objectID: target.getAttribute("id")
+            }));
+        }
+    });
 });
 
 function randomPosition() {
