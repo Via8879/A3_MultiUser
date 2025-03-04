@@ -15,37 +15,59 @@ server.listen(8080, ()=>console.log("listeing on http port 8080"))
 const wsServer = new WebSocketServer({ httpServer: server});
 
 const players = {};
+const objects = [];
+
+let sphere =  { position: randomPosition() };
+const score = {};
 
 wsServer.on("request", request => {
     const connection = request.accept(null, request.origin);
     console.log("New WebSocket connection established");
     const playerID = guid();
 
-    players[playerID] = {
-        connection,
-        position: { x:Math.random() * 5, y: 1.5, z: Math.random() * 5 }
-    };
+    players[playerID] = { connection };
 
-    console.log(`Mewplayer connected: ${playerID}`);
+    score[playerID] = 0;
 
-    connection.send(JSON.stringify({ type: "init", players: getPlayersData() }));
+    console.log(`Newplayer connected: ${playerID}`);
+
+    connection.send(
+        JSON.stringify({ 
+            type: "init", 
+            objects,
+            sphere,
+            score
+        })
+    );
 
     ShowNew({
         type: "newPlayer",
-        id: playerID,
-        position: players[playerID].position
-    });
+        id: playerID
+    }, playerID);
 
     connection.on("message", message => {
         const result = JSON.parse(message.utf8Data);
 
-        if (result.type === "update") {
-            players[playerID].position = result.position;
+        // object stacking 
+        if (result.type === "stackObject") {
+            objects.push(result.object);
             ShowNew({ 
-                type: "update",
-                id: playerID,
-                position: result.position
-            }, playerID);
+                type: "stackObject",
+                object: result.object
+            });
+        }
+
+        if (result.type === "GetSphere") {
+            if (!score[result.id]) score[result.id] = 0; 
+            score[result.id] += 1;
+                
+            sphere.position = randomPosition();
+
+            ShowNew({ 
+                type: "GotSphere",
+                sphere,
+                score
+            });
         }
 
     });
@@ -53,6 +75,7 @@ wsServer.on("request", request => {
     connection.on("close", () => {
         console.log(`Player disconnected: ${playerID}`);
         delete players[playerID];
+        delete score[playerID];
         ShowNew({ type: "remove", id: playerID });
     });
 
@@ -67,13 +90,13 @@ function ShowNew(data, UserID = null) {
     });
 }
 
-function getPlayersData() {
-    const PData = {};
-    Object.keys(players).forEach((id) => {
-        PData[id] = players[id].position;
-    });
-    return PData;
-
+function randomPosition() {
+    let x, z;
+    do {
+        x = (Math.random() * 12) - 6;
+        z = (Math.random() * 12) - 6;
+    } while (Math.abs(x) < 2 && Math.abs(z) < 2);
+    return { x: x, y: 1.5, z: z };
 }
 
 function ap4() {

@@ -11,10 +11,19 @@
     <body>
         <a-scene physics="debug: false; gravity: -9.8">
             <a-entity environment="preset: forest; ground: flat; groundColor: #228B22;"></a-entity>
-
-            <a-box id="player" position="0 1.6 0" color="red"></a-box>
-
             <a-plane position="0 0 0" rotation="-90 0 0" width="50" height="50" color="#808080" material="shader: grid;"></a-plane>
+            
+            <a-entity id="player" position="0 1.6 0" mouvement-controls>
+                <a-camera look-controls>
+                    <a-cursor></a-cursor>
+                </a-camera>
+            </a-entity>
+
+            <a-entity id="left-hand" hand-controls="hand: left" super-hands></a-entity>
+            <a-entity id="right-hand" hand-controls="hand: right" super-hands></a-entity>
+
+            <a-box id="stack-object" position="0 1 0" color="blue" width ="1" height="1" depth="1"></a-box>
+
         </a-scene>
         <script src="js/Connection.js"></script>
     </body>
