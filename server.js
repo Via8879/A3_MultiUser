@@ -1,71 +1,83 @@
-const express = require("express");   
 const http = require("http"); 
-const WebSocket = require("ws");
-const { v4: uuidv4 } = require("uuid");
+const express = require("express");
+const path = require("path");
+const WebSocketServer = require("websocket").server;
 
 const app = express();
-const server = http.createServer(app);  // Create an HTTP server
-const wss = new WebSocket.Server({ server });
 
-let players = {};
-let connections = {};
 
-wss.on("connection", (ws) => {
-    let playerID = null;
+app.use(express.static(path.join(__dirname, "public")));
+app.get("/", (req,res)=> res.sendFile(path.join(__dirname, "public", "index.html")));
 
-    ws.on("message", (message) => {
-        const data = JSON.parse(message);
+const server = http.createServer(app);
+server.listen(8080, ()=>console.log("listeing on http port 8080"))
 
-        if (data.type === "newPlayer") {
-            playerID = uuidv4();
-            players[playerID] = { x: 0, y: 1.6, z: 0 };
-            connections[playerID] = ws;
+const wsServer = new WebSocketServer({ httpServer: server});
 
-            ws.send(JSON.stringify({ type: "setID", id: playerID }));
+const players = {};
 
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: "newPlayer", id: playerID, position: players[playerID] }));
-                }
-            });
-        }
+wsServer.on("request", request => {
+    const connection = request.accept(null, request.origin);
+    console.log("New WebSocket connection established");
+    const playerID = guid();
 
-        if (data.type === "reconnect") {
-            playerID = data.id;
+    players[playerID] = {
+        connection,
+        position: { x:Math.random() * 5, y: 1.5, z: Math.random() * 5 }
+    };
 
-            if (players[playerID]) {
-                ws.send(JSON.stringify({ type: "init", players }));
-            }
-            else {
-                playerID = uuidv4();
-                players[playerID] = { x: 0, y: 1.6, z: 0 };
-                connections[playerID] = ws;
-                ws.send(JSON.stringify({ type: "setID", id: playerID }));
-            }
-        }
+    console.log(`Mewplayer connected: ${playerID}`);
 
-        if (data.type === "update" && playerID) {
-            players[playerID] = data.position;
+    connection.send(JSON.stringify({ type: "init", players: getPlayersData() }));
 
-            wss.clients.forEach(client => {
-                if (client !== ws && client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({ type: "update", id: playerID, position: data.position }));
-                }
-            });
-        }
+    ShowNew({
+        type: "newPlayer",
+        id: playerID,
+        position: players[playerID].position
     });
 
-    ws.on("close", () => {
-        if (playerID && players[playerID]) {
-            delete connections[playerID];
+    connection.on("message", message => {
+        const result = JSON.parse(message.utf8Data);
+
+        if (result.type === "update") {
+            players[playerID].position = result.position;
+            ShowNew({ 
+                type: "update",
+                id: playerID,
+                position: result.position
+            }, playerID);
+        }
+
+    });
+
+    connection.on("close", () => {
+        console.log(`Player disconnected: ${playerID}`);
+        delete players[playerID];
+        ShowNew({ type: "remove", id: playerID });
+    });
+
+
+});
+
+function ShowNew(data, UserID = null) {
+    Object.keys(players).forEach((id) => {
+        if (id !== UserID) {
+            players[id].connection.send(JSON.stringify(data));
         }
     });
-});
+}
 
-// Serve static files from the "public" folder
-app.use(express.static("public"));
+function getPlayersData() {
+    const PData = {};
+    Object.keys(players).forEach((id) => {
+        PData[id] = players[id].position;
+    });
+    return PData;
 
-// Start the server on port 8080
-server.listen(8080, () => {
-    console.log("✅ Server is running on http://10.77.160.244:8080");
-});
+}
+
+function ap4() {
+    return (((1+Math.random())*0x10000)|0).toString(16).substring(1);
+}
+
+const guid = () => (ap4() + ap4() + "-" + ap4() + "-4" + ap4().substr(0,3) + "-" + ap4() + "-" + ap4() + ap4() + ap4()).toLowerCase();
