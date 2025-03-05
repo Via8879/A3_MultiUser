@@ -24,7 +24,8 @@ const roles = ["spawner", "breaker"];
 wsServer.on("request", request => {
     const connection = request.accept(null, request.origin);
     console.log("New WebSocket connection established");
-    const playerID = guid();
+    const playerNumber = Object.keys(players).length + 1;
+    const playerID = `Player ${playerNumber}`;
 
     let role = Object.keys(players).length % 2 === 0 ? "spawner" : "breaker";
 
@@ -37,6 +38,7 @@ wsServer.on("request", request => {
     connection.send(
         JSON.stringify({ 
             type: "init", 
+            id: playerID,
             objects,
             sphere,
             score,
@@ -57,7 +59,8 @@ wsServer.on("request", request => {
         if (result.type === "stackObject") {
             let newObject = {
                 id: guid(),
-                position: result.object.position
+                position: result.object.position,
+                color: getRandomColor()
             };
             objects.push(newObject);
             ShowNew({ 
@@ -67,8 +70,11 @@ wsServer.on("request", request => {
         }
 
         if (result.type === "GetSphere") {
-            if (!score[result.id]) score[result.id] = 0; 
-            score[result.id] += 1;
+            if (players[result.id]) {
+                score[result.id] += 1;
+            }else{
+                console.log(`Unknown player ID: ${result.id}`);
+            }
                 
             sphere.position = randomPosition();
 
@@ -77,7 +83,7 @@ wsServer.on("request", request => {
                 sphere,
                 score
             });
-            console.log(`player ${result.id} found teh sphere`);
+            console.log(`player ${result.id} found the sphere`);
         }
 
         if (result.type === "breakObject") {
@@ -108,12 +114,21 @@ function ShowNew(data, UserID = null) {
     });
 }
 
+function getRandomColor() {
+    let letters = "0123456789ABCDEF";
+    let color = "#";
+    for (let i = 0; i < 6; i++) {
+        color += letters[Math.floor(Math.random() * 16)];
+    }
+    return color;
+}
+
 function randomPosition() {
     let x, z;
     do {
-        x = (Math.random() * 12) - 6;
-        z = (Math.random() * 12) - 6;
-    } while (Math.abs(x) < 2 && Math.abs(z) < 2);
+        x = (Math.random() * 100) - 50;
+        z = (Math.random() * 100) - 50;
+    } while (Math.abs(x) < 10 && Math.abs(z) < 10);
     return { x: x, y: 1.5, z: z };
 }
 

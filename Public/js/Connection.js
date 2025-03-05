@@ -16,7 +16,8 @@ socket.onmessage = (event) => {
 
     if (data.type === "init") {
         playerRole = data.role;
-        console.log(`your role is: ${playerRole}`);
+        socket.playerID = data.id;
+        console.log(`your role is: ${playerRole}, ID: ${socket.playerID}`);
 
         showPlayerRole(playerRole);
 
@@ -53,7 +54,7 @@ function addStackObjects(object) {
     let newBlock = document.createElement("a-box");
     newBlock.setAttribute("id", object.id);
     newBlock.setAttribute("position", `${object.position.x} ${object.position.y} ${object.position.z}`);
-    newBlock.setAttribute("color", "white");
+    newBlock.setAttribute("color", object.color);
     newBlock.setAttribute("width", "1");
     newBlock.setAttribute("height", "1");
     newBlock.setAttribute("depth", "1");
@@ -78,7 +79,11 @@ function placeSphere(position){
         scene.appendChild(sphere);
 
         sphere.addEventListener("click", () => {
-            console.log("sphere clicked");
+            if (!socket.playerID) {
+                console.error("error: player ID is undefined, cannot update score");
+                return;
+            }
+            console.log(`sphere clicked by player ${socket.playerID}`);
             socket.send(JSON.stringify({ 
                 type: "GetSphere", 
                 id: socket.playerID
