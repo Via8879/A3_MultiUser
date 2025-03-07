@@ -147,6 +147,8 @@ document.addEventListener("DOMContentLoaded", () => {
             }));
         }
     });
+
+    let menuPanel = document.getElementById("menu_Panel");
 });
 
 function randomPosition() {

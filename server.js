@@ -17,7 +17,7 @@ const wsServer = new WebSocketServer({ httpServer: server});
 const players = {};
 let objects = [];
 
-let sphere =  { position: randomPosition() };
+let sphere =  { position: randomSpherePosition() };
 const score = {};
 const roles = ["spawner", "breaker"];
 
@@ -59,7 +59,7 @@ wsServer.on("request", request => {
         if (result.type === "stackObject") {
             let newObject = {
                 id: guid(),
-                position: result.object.position,
+                position: randomCubePosition(),
                 color: getRandomColor()
             };
             objects.push(newObject);
@@ -123,13 +123,23 @@ function getRandomColor() {
     return color;
 }
 
-function randomPosition() {
+function randomSpherePosition() {
     let x, z;
     do {
         x = (Math.random() * 100) - 50;
         z = (Math.random() * 100) - 50;
     } while (Math.abs(x) < 10 && Math.abs(z) < 10);
     return { x: x, y: 1.5, z: z };
+}
+
+function randomCubePosition() {
+    let x, z;
+    do {
+        x = (Math.random() * 40) - 20;
+        z = (Math.random() * 40) - 20;
+    } while (Math.abs(x) < 5 && Math.abs(z) < 5);
+    return { x: x, y: 1.5, z: z };
+
 }
 
 function ap4() {
